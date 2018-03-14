@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         GITLAB_TOKEN = credentials('jenkins-cleanup-gitlab-token')
-        PIP_HOSTNAME = env.PIP_REGISTRY.split(':').getAt(0)
+        PIP_HOSTNAME = env.PIP_REGISTRY.tokenize(':').getAt(0)
     }
 
     options {
