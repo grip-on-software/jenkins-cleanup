@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         GITLAB_TOKEN = credentials('jenkins-cleanup-gitlab-token')
-        PIP_HOSTNAME = env.PIP_REGISTRY.tokenize(':').getAt(0)
     }
 
     options {
@@ -26,18 +25,28 @@ pipeline {
     }
 
     stages {
+        stage('Build') {
+            steps {
+                checkout scm
+                updateGitlabCommitStatus name: env.JOB_NAME, state: 'running'
+                sh 'docker build -t $DOCKER_REGISTRY/gros-jenkins-cleanup . --build-arg PIP_REGISTRY=$PIP_REGISTRY'
+            }
+        }
+        stage('Push') {
+            when { branch 'master' }
+            steps {
+                sh 'docker push $DOCKER_REGISTRY/gros-jenkins-cleanup:latest'
+            }
+        }
         stage('Run') {
             agent {
                 docker {
-                    image 'python:3.6-alpine'
+                    image '$DOCKER_REGISTRY/gros-jenkins-cleanup'
                     reuseNode true
                 }
             }
             steps {
-                checkout scm
-                updateGitlabCommitStatus name: env.JOB_NAME, state: 'running'
                 withCredentials([file(credentialsId: 'data-gathering-settings', variable: 'GATHERER_SETTINGS_FILE')]) {
-                    sh 'pip install --extra-index-url http://$PIP_REGISTRY/ --trusted-host $PIP_HOSTNAME -r requirements.txt'
                     sh './docker.sh'
                     sh 'python jenkins.py'
                 }
