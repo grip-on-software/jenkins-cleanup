@@ -46,8 +46,9 @@ pipeline {
                 }
             }
             steps {
-                withCredentials([file(credentialsId: 'data-gathering-settings', variable: 'GATHERER_SETTINGS_FILE')]) {
+                withCredentials([file(credentialsId: 'data-gathering-settings', variable: 'GATHERER_SETTINGS_FILE'), file(credentialsId: 'data-gathering-credentials', variable: 'GATHERER_CREDENTIALS_FILE')]) {
                     sh 'python jenkins.py'
+                    sh 'python sonar.py'
                 }
             }
         }
