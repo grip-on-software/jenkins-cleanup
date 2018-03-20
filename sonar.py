@@ -43,7 +43,6 @@ def get_sonar_projects(session, url, days=2):
     offset = datetime.now().replace(microsecond=0) - timedelta(days=days)
     url = "{}/api/projects/search?analysisBefore={}".format(url,
                                                             offset.isoformat())
-    print(url)
 
     request = session.get(url)
     request.raise_for_status()
@@ -54,9 +53,11 @@ def get_sonar_projects(session, url, days=2):
 
     check_repos = {}
     for project in projects['components']:
+        # Only consider projects with branches
         key = project['key']
-        repo, branch = key.split(':')
-        check_repos.setdefault(repo, set()).add(branch)
+        if ':' in key:
+            repo, branch = key.split(':')
+            check_repos.setdefault(repo, set()).add(branch)
 
     return check_repos
 
