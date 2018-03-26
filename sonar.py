@@ -98,10 +98,13 @@ def main():
     check_repos = get_sonar_projects(session, sonar_url, args.days)
     remove = get_gitlab_projects(check_repos, args)
 
-    print('Removing projects {}'.format(', '.join(remove)))
-    request = session.post('{}/api/projects/bulk_delete'.format(sonar_url),
-                           data={'projects': ','.join(remove)})
-    request.raise_for_status()
+    if remove:
+        print('Removing Sonar projects {}'.format(', '.join(remove)))
+        request = session.post('{}/api/projects/bulk_delete'.format(sonar_url),
+                               data={'projects': ','.join(remove)})
+        request.raise_for_status()
+    else:
+        print('No Sonar projects to remove')
 
 if __name__ == '__main__':
     main()
