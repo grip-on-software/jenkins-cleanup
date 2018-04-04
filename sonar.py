@@ -3,6 +3,7 @@ Script to clean up old analysis projects from Sonar.
 """
 
 import argparse
+import os.path
 from datetime import datetime, timedelta
 from requests.auth import HTTPBasicAuth
 from gatherer.config import Configuration
@@ -15,6 +16,11 @@ def parse_args():
     """
 
     config = Configuration.get_settings()
+    verify = config.get('sonar', 'verify')
+    if not Configuration.has_value(verify):
+        verify = False
+    elif not os.path.exists(verify):
+        verify = True
 
     description = "Remove old branch analysis projects from Sonar"
     parser = argparse.ArgumentParser(description=description)
@@ -24,8 +30,10 @@ def parse_args():
                         default=config.get('sonar', 'username'))
     parser.add_argument('--password', help='Sonar password',
                         default=config.get('sonar', 'password'))
-    parser.add_argument('--verify', nargs='?', const=True, default=False,
-                        help="Enable SSL certificate verification")
+    parser.add_argument('--verify', nargs='?', const=True, default=verify,
+                        help='Enable SSL certificate verification')
+    parser.add_argument('--no-verify', action='store_false', dest='verify',
+                        help='Disable SSL certificate verification')
     parser.add_argument('--group', default=None,
                         help="GitLab group in which the projects live")
     parser.add_argument('--gitlab', default=config.get('gitlab', 'url'),
