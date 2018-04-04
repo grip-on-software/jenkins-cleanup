@@ -29,7 +29,10 @@ pipeline {
             steps {
                 checkout scm
                 updateGitlabCommitStatus name: env.JOB_NAME, state: 'running'
-                sh 'docker build -t $DOCKER_REGISTRY/gros-jenkins-cleanup . --build-arg PIP_REGISTRY=$PIP_REGISTRY'
+                withCredentials([string(credentialsId: 'pypi-repository', variable: 'PIP_REGISTRY'), file(credentialsId: 'pypi-certificate', variable: 'PIP_CERTIFICATE')]) {
+                    sh 'cp $PIP_CERTIFICATE pypi.crt'
+                    sh 'docker build -t $DOCKER_REGISTRY/gros-jenkins-cleanup . --build-arg PIP_REGISTRY=$PIP_REGISTRY --build-arg PIP_CERTIFICATE=pypi.crt'
+                }
             }
         }
         stage('Push') {
@@ -42,6 +45,7 @@ pipeline {
             agent {
                 docker {
                     image '$DOCKER_REGISTRY/gros-jenkins-cleanup'
+                    args '-v /etc/ssl/certs:/etc/ssl/certs'
                     reuseNode true
                 }
             }
