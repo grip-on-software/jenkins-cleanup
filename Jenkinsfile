@@ -2,6 +2,7 @@ pipeline {
     agent { label 'docker' }
 
     environment {
+        IMAGE_TAG = env.BRANCH_NAME.replaceFirst('^master$', 'latest')
         GITLAB_TOKEN = credentials('jenkins-cleanup-gitlab-token')
     }
 
@@ -25,13 +26,22 @@ pipeline {
     }
 
     stages {
+        stage('Start') {
+            when {
+                expression {
+                    currentBuild.rawBuild.getCause(hudson.triggers.TimerTrigger$TimerTriggerCause) == null
+                }
+            }
+            steps {
+                updateGitlabCommitStatus name: env.JOB_NAME, state: 'running'
+            }
+        }
         stage('Build') {
             steps {
                 checkout scm
-                updateGitlabCommitStatus name: env.JOB_NAME, state: 'running'
                 withCredentials([string(credentialsId: 'pypi-repository', variable: 'PIP_REGISTRY'), file(credentialsId: 'pypi-certificate', variable: 'PIP_CERTIFICATE')]) {
                     sh 'cp $PIP_CERTIFICATE pypi.crt'
-                    sh 'docker build -t $DOCKER_REGISTRY/gros-jenkins-cleanup . --build-arg PIP_REGISTRY=$PIP_REGISTRY --build-arg PIP_CERTIFICATE=pypi.crt'
+                    sh 'docker build -t $DOCKER_REGISTRY/gros-jenkins-cleanup:$IMAGE_TAG . --build-arg PIP_REGISTRY=$PIP_REGISTRY --build-arg PIP_CERTIFICATE=pypi.crt'
                 }
             }
         }
@@ -44,7 +54,7 @@ pipeline {
         stage('Cleanup jenkins') {
             agent {
                 docker {
-                    image '$DOCKER_REGISTRY/gros-jenkins-cleanup'
+                    image '$DOCKER_REGISTRY/gros-jenkins-cleanup:$IMAGE_TAG'
                     args '-v /etc/ssl/certs:/etc/ssl/certs'
                     reuseNode true
                 }
