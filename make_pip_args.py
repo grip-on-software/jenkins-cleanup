@@ -6,7 +6,7 @@ from __future__ import print_function
 import urllib.parse
 import sys
 import tempfile
-import pip._vendor.requests.certs as certs
+import certifi
 
 def main(args):
     """
@@ -34,7 +34,7 @@ def main(args):
 
     if certificate_path is not None:
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
-            bundle_path = certs.where()
+            bundle_path = certifi.where()
             with open(bundle_path, 'r') as bundle_file:
                 for line in bundle_file:
                     temp_file.write(line)
