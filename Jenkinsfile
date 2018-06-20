@@ -51,6 +51,11 @@ pipeline {
                 sh 'docker push $DOCKER_REGISTRY/gros-jenkins-cleanup:latest'
             }
         }
+        stage('Cleanup docker') {
+            steps {
+                sh './docker.sh'
+            }
+        }
         stage('Cleanup jenkins') {
             agent {
                 docker {
@@ -63,12 +68,13 @@ pipeline {
                 withCredentials([file(credentialsId: 'data-gathering-settings', variable: 'GATHERER_SETTINGS_FILE'), file(credentialsId: 'data-gathering-credentials', variable: 'GATHERER_CREDENTIALS_FILE')]) {
                     sh 'python jenkins.py'
                     sh 'python sonar.py'
+                    sh 'python docker.py images.txt tags.txt'
                 }
             }
         }
-        stage('Cleanup docker') {
+        stage('Cleanup docker tags') {
             steps {
-                sh './docker.sh'
+                sh './docker.sh tags.txt'
             }
         }
         stage('Status') {
