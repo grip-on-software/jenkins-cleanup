@@ -91,10 +91,10 @@ class DockerTagCleanup(object):
 
         prefix = '{}/{}-'.format(self.registry, self.group)
         for repo, branches in self.check_repos.items():
-            project = gitlab_api.project('{}/{}'.format(self.group, repo))
-            existing = project.branches()
+            project = gitlab_api.projects.get('{}/{}'.format(self.group, repo))
 
-            names = set(branch.name for branch in existing)
+            # List of existing branch names
+            names = set(branch.name for branch in project.branches.list())
             removed = branches - names
             remove.update('{}{}:{}'.format(prefix, repo, branch) for branch in removed)
 
