@@ -13,7 +13,7 @@ pipeline {
 
     triggers {
         gitlab(triggerOnPush: true, triggerOnMergeRequest: true, branchFilterType: 'All', secretToken: env.GITLAB_TOKEN)
-        cron('H H * * 6')
+        cron('H H(0-7) * * H')
     }
 
     post {
