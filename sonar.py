@@ -9,6 +9,7 @@ from requests.auth import HTTPBasicAuth
 from gatherer.config import Configuration
 from gatherer.domain.source import Source
 from gatherer.request import Session
+from gitlab.exceptions import GitlabGetError
 
 def parse_args():
     """
@@ -83,7 +84,12 @@ def get_gitlab_projects(check_repos, args):
         group = args.group
 
     for repo, branches in check_repos.items():
-        project = gitlab_api.projects.get('{}/{}'.format(group, repo))
+        project_name = '{}/{}'.format(group, repo)
+        try:
+            project = gitlab_api.projects.get(project_name)
+        except GitlabGetError as error:
+            print('{} for GitLab project {}'.format(error, project_name))
+            continue
 
         # List of existing branch names
         names = set(branch.name for branch in project.branches.list())
