@@ -60,7 +60,7 @@ pipeline {
             agent {
                 docker {
                     image '$DOCKER_REGISTRY/gros-jenkins-cleanup:$IMAGE_TAG'
-                    args '-v /etc/ssl/certs:/etc/ssl/certs'
+                    args '-v /etc/ssl/certs:/etc/ssl/certs -v /usr/local/share/ca-certificates:/usr/local/share/ca-certificates'
                     reuseNode true
                 }
             }
