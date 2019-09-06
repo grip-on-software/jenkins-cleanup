@@ -1,1 +1,1 @@
-gros-gatherer==0.0.3
+gros-gatherer>=0.0.3
