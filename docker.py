@@ -34,7 +34,7 @@ def parse_args():
                         default=sys.stdout, help="Output of tags to remove")
     return parser.parse_args()
 
-class DockerTagCleanup(object):
+class DockerTagCleanup:
     """
     Docker tag cleanup operations.
     """
@@ -95,12 +95,13 @@ class DockerTagCleanup(object):
             project_name = '{}/{}'.format(self.group, repo)
             try:
                 project = gitlab_api.projects.get(project_name)
+
+                # List of existing branch names
+                names = set(branch.name for branch in project.branches.list())
             except GitlabGetError as error:
                 print('{} for GitLab project {}'.format(error, project_name))
                 continue
 
-            # List of existing branch names
-            names = set(branch.name for branch in project.branches.list())
             removed = branches - names
             remove.update('{}{}:{}'.format(prefix, repo, branch) for branch in removed)
 

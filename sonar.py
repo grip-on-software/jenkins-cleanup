@@ -87,12 +87,13 @@ def get_gitlab_projects(check_repos, args):
         project_name = '{}/{}'.format(group, repo)
         try:
             project = gitlab_api.projects.get(project_name)
+
+            # List of existing branch names
+            names = set(branch.name for branch in project.branches.list())
         except GitlabGetError as error:
             print('{} for GitLab project {}'.format(error, project_name))
             continue
 
-        # List of existing branch names
-        names = set(branch.name for branch in project.branches.list())
         removed = branches - names
         remove.update('{}:{}'.format(repo, branch) for branch in removed)
 
