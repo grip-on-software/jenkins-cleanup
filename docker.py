@@ -9,7 +9,7 @@ import sys
 from datetime import datetime, timedelta
 from gatherer.config import Configuration
 from gatherer.domain.source import Source
-from gitlab.exceptions import GitlabGetError
+from gitlab.exceptions import GitlabGetError, GitlabListError
 
 def parse_args():
     """
@@ -98,7 +98,7 @@ class DockerTagCleanup:
 
                 # List of existing branch names
                 names = set(branch.name for branch in project.branches.list())
-            except GitlabGetError as error:
+            except (GitlabGetError, GitlabListError) as error:
                 print('{} for GitLab project {}'.format(error, project_name))
                 continue
 
