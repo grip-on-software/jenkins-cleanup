@@ -59,7 +59,7 @@ pipeline {
         stage('Cleanup jenkins') {
             agent {
                 docker {
-                    image '$DOCKER_REGISTRY/gros-jenkins-cleanup:$IMAGE_TAG'
+                    image "${env.DOCKER_REGISTRY}/gros-jenkins-cleanup:${env.IMAGE_TAG}"
                     args '-v /etc/ssl/certs:/etc/ssl/certs -v /usr/local/share/ca-certificates:/usr/local/share/ca-certificates'
                     reuseNode true
                 }
