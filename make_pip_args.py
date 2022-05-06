@@ -1,8 +1,22 @@
 """
 Generate additional pip arguments based on a PyPI registry index URL.
+
+Copyright 2017-2020 ICTU
+Copyright 2017-2022 Leiden University
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
 
-from __future__ import print_function
 import urllib.parse
 import sys
 import tempfile
@@ -25,7 +39,7 @@ def main(args):
         host = urllib.parse.urlsplit(registry_url).hostname
     else:
         host = registry_url.split(':', 1)[0]
-        registry_url = 'http://{}'.format(registry_url)
+        registry_url = f'http://{registry_url}'
 
     arguments = {
         'extra-index-url': registry_url,
@@ -35,18 +49,18 @@ def main(args):
     if certificate_path is not None:
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
             bundle_path = certifi.where()
-            with open(bundle_path, 'r') as bundle_file:
+            with open(bundle_path, 'r', encoding='utf-8') as bundle_file:
                 for line in bundle_file:
                     temp_file.write(line)
 
             # Append the certificate to the temporary file
-            with open(certificate_path, 'r') as certificate_file:
+            with open(certificate_path, 'r', encoding='utf-8') as certificate_file:
                 for line in certificate_file:
                     temp_file.write(line)
 
             arguments['cert'] = temp_file.name
 
-    print(' '.join('--{} {}'.format(key, value) for key, value in arguments.items()))
+    print(' '.join(f'--{key} {value}' for key, value in arguments.items()))
 
 if __name__ == '__main__':
     main(sys.argv[1:])

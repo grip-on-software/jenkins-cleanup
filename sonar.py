@@ -1,10 +1,25 @@
 """
 Script to clean up old analysis projects from Sonar.
+
+Copyright 2017-2020 ICTU
+Copyright 2017-2022 Leiden University
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
 
 import argparse
-import os.path
 from datetime import datetime, timedelta
+from pathlib import Path
 from requests.auth import HTTPBasicAuth
 from gatherer.config import Configuration
 from gatherer.domain.source import Source
@@ -20,7 +35,7 @@ def parse_args():
     verify = config.get('sonar', 'verify')
     if not Configuration.has_value(verify):
         verify = False
-    elif not os.path.exists(verify):
+    elif not Path(verify).exists():
         verify = True
 
     description = "Remove old branch analysis projects from Sonar"
@@ -50,15 +65,14 @@ def get_sonar_projects(session, url, days=2):
     """
 
     offset = datetime.now().replace(microsecond=0) - timedelta(days=days)
-    url = "{}/api/projects/search?analysisBefore={}".format(url,
-                                                            offset.isoformat())
+    url = f"{url}/api/projects/search?analysisBefore={offset.isoformat()}"
 
     request = session.get(url)
     request.raise_for_status()
     try:
         projects = request.json()
-    except ValueError:
-        raise ValueError('Invalid JSON response: {}'.format(request.text))
+    except ValueError as error:
+        raise ValueError(f'Invalid JSON response: {request.text}') from error
 
     check_repos = {}
     for project in projects['components']:
@@ -84,18 +98,18 @@ def get_gitlab_projects(check_repos, args):
         group = args.group
 
     for repo, branches in check_repos.items():
-        project_name = '{}/{}'.format(group, repo)
+        project_name = f'{group}/{repo}'
         try:
             project = gitlab_api.projects.get(project_name)
 
             # List of existing branch names
             names = set(branch.name for branch in project.branches.list())
         except (GitlabGetError, GitlabListError) as error:
-            print('{} for GitLab project {}'.format(error, project_name))
+            print(f'{error} for GitLab project {project_name}')
             continue
 
         removed = branches - names
-        remove.update('{}:{}'.format(repo, branch) for branch in removed)
+        remove.update(f'{repo}:{branch}' for branch in removed)
 
     return remove
 
@@ -114,8 +128,8 @@ def main():
     remove = get_gitlab_projects(check_repos, args)
 
     if remove:
-        print('Removing Sonar projects {}'.format(', '.join(remove)))
-        request = session.post('{}/api/projects/bulk_delete'.format(sonar_url),
+        print(f"Removing Sonar projects {', '.join(remove)}")
+        request = session.post(f'{sonar_url}/api/projects/bulk_delete',
                                data={'projects': ','.join(remove)})
         request.raise_for_status()
     else:

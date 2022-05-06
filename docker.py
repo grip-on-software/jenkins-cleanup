@@ -1,10 +1,24 @@
 """
 Script to clean up old tagged images from the local Docker graph.
+
+Copyright 2017-2020 ICTU
+Copyright 2017-2022 Leiden University
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
 
-from __future__ import print_function
 import argparse
-import os.path
+import os
 import sys
 from datetime import datetime, timedelta
 from gatherer.config import Configuration
@@ -56,10 +70,10 @@ class DockerTagCleanup:
 
         registry, name = image.split('/', 1)
         if registry != self.registry:
-            raise RuntimeError('Different registry URL: {}'.format(self.registry))
+            raise RuntimeError(f'Different registry URL: {self.registry}')
 
         if not name.startswith(self.group + '-'):
-            raise RuntimeError('Does not belong to group {}'.format(self.group))
+            raise RuntimeError(f'Does not belong to group {self.group}')
 
         repo = name[len(self.group + '-'):]
         offset = datetime.now() - timedelta(days=self.days)
@@ -79,7 +93,7 @@ class DockerTagCleanup:
             try:
                 self._parse_line(line.strip())
             except RuntimeError as error:
-                print('{} on line {}'.format(error, line.strip()))
+                print(f'{error} on line {line.strip()}')
 
     def get_gitlab_projects(self, source):
         """
@@ -90,20 +104,20 @@ class DockerTagCleanup:
         remove = set()
         gitlab_api = source.gitlab_api
 
-        prefix = '{}/{}-'.format(self.registry, self.group)
+        prefix = f'{self.registry}/{self.group}-'
         for repo, branches in self.check_repos.items():
-            project_name = '{}/{}'.format(self.group, repo)
+            project_name = '{self.group}/{repo}'
             try:
                 project = gitlab_api.projects.get(project_name)
 
                 # List of existing branch names
                 names = set(branch.name for branch in project.branches.list())
             except (GitlabGetError, GitlabListError) as error:
-                print('{} for GitLab project {}'.format(error, project_name))
+                print(f'{error} for GitLab project {project_name}')
                 continue
 
             removed = branches - names
-            remove.update('{}{}:{}'.format(prefix, repo, branch) for branch in removed)
+            remove.update(f'{prefix}{repo}:{branch}' for branch in removed)
 
         return remove
 
@@ -124,7 +138,7 @@ def main():
     remove = cleanup.get_gitlab_projects(source)
 
     if remove:
-        print('Removing images {}'.format(', '.join(remove)))
+        print(f"Removing images {', '.join(remove)}")
         args.tags.write('\n'.join(remove))
     else:
         print('No images to remove')
