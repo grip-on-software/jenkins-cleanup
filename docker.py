@@ -106,7 +106,7 @@ class DockerTagCleanup:
 
         prefix = f'{self.registry}/{self.group}-'
         for repo, branches in self.check_repos.items():
-            project_name = '{self.group}/{repo}'
+            project_name = f'{self.group}/{repo}'
             try:
                 project = gitlab_api.projects.get(project_name)
 
