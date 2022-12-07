@@ -20,7 +20,7 @@ limitations under the License.
 from argparse import ArgumentParser, Namespace
 from datetime import datetime, timedelta
 from gatherer.config import Configuration
-from gatherer.jenkins import Jenkins
+from gatherer.jenkins import Jenkins, Job
 
 def parse_args() -> Namespace:
     """
@@ -33,6 +33,20 @@ def parse_args() -> Namespace:
                         help="Number of days to keep old jobs")
     return parser.parse_args()
 
+def can_delete_branch(branch: Job, offset: datetime) -> bool:
+    """
+    Check whether a branch job of a multibranch pipeline workflow can be
+    removed due to staleness.
+    """
+
+    # Never remove a branch job that is still active.
+    if branch.data['buildable']:
+        return False
+
+    build = branch.last_build
+    last = datetime.fromtimestamp(build.data['timestamp'] / 1000)
+    return last < offset
+
 def main() -> None:
     """
     Main entry point.
@@ -44,15 +58,13 @@ def main() -> None:
 
     offset = datetime.now() - timedelta(days=args.days)
     for job in jenkins.jobs:
-        # Never remove the only job of a multibranch pipeline workflow
+        # Never remove the only job of a multibranch pipeline workflow,
+        # or a different workflow with no sub-jobs
         if len(job.jobs) > 1:
             for branch in job.jobs:
-                if not branch.data['buildable']:
-                    build = branch.last_build
-                    last = datetime.fromtimestamp(build.data['timestamp'] / 1000)
-                    if last < offset:
-                        print(f"Removing old branch {job.name}/{branch.name}")
-                        branch.delete()
+                if can_delete_branch(branch, offset):
+                    print(f"Removing old branch {job.name}/{branch.name}")
+                    branch.delete()
 
 if __name__ == '__main__':
     main()
