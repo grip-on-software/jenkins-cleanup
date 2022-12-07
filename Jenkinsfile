@@ -4,6 +4,7 @@ pipeline {
     environment {
         IMAGE_TAG = env.BRANCH_NAME.replaceFirst('^master$', 'latest')
         GITLAB_TOKEN = credentials('jenkins-cleanup-gitlab-token')
+        SCANNER_HOME = tool name: 'SonarQube Scanner 3', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
     }
 
     options {
@@ -22,6 +23,10 @@ pipeline {
         }
         aborted {
             updateGitlabCommitStatus name: env.JOB_NAME, state: 'canceled'
+        }
+        always {
+            publishHTML([allowMissing: true, alwaysLinkToLastBuild: false, keepAll: true, reportDir: 'mypy-report/', reportFiles: 'index.html', reportName: 'Typing', reportTitles: ''])
+            junit allowEmptyResults: true, testResults: 'mypy-report/junit.xml'
         }
     }
 
@@ -53,10 +58,13 @@ pipeline {
         }
         stage('SonarQube Analysis') {
             steps {
-                withPythonEnv('System-CPython-3') {
-                    pysh 'python -m pip install -r analysis-requirements.txt'
-                    pysh 'mypy cleanup --html-report mypy-report --cobertura-xml-report mypy-report --junit-xml mypy-report/junit.xml --no-incremental --show-traceback || true'
-                    pysh 'python -m pylint cleanup --exit-zero --reports=n --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" -d duplicate-code > pylint-report.txt'
+                withCredentials([string(credentialsId: 'pypi-repository', variable: 'PIP_REGISTRY'), file(credentialsId: 'pypi-certificate', variable: 'PIP_CERTIFICATE')]) {
+                    withPythonEnv('System-CPython-3') {
+                        pysh 'python -m pip install -r analysis-requirements.txt'
+                        pysh 'python -m pip install $(python make_pip_args.py $PIP_REGISTRY $PIP_CERTIFICATE) -r requirements.txt'
+                        pysh 'mypy cleanup --html-report mypy-report --cobertura-xml-report mypy-report --junit-xml mypy-report/junit.xml --no-incremental --show-traceback || true'
+                        pysh 'python -m pylint cleanup --exit-zero --reports=n --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" -d duplicate-code > pylint-report.txt'
+                    }
                 }
                 withSonarQubeEnv('SonarQube') {
                     sh '${SCANNER_HOME}/bin/sonar-scanner -Dsonar.projectKey=jenkins-cleanup:$BRANCH_NAME -Dsonar.projectName="Jenkins cleanup $BRANCH_NAME"'
