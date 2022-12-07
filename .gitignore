@@ -2,3 +2,5 @@
 images.txt
 tags.txt
 env/
+mypy-report/
+pylint-report.txt

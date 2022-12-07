@@ -26,12 +26,14 @@ The cleanup scripts are assumed to be running on an agent with Docker installed
 
 There are four scripts in this repository, three of which are Python-based:
 
-- `jenkins.py`: Clean up old Jenkins multibranch pipeline jobs.
-- `sonar.py`: Clean up old analysis projects from Sonar.
-- `docker.py`: Find old tagged images to remove from the Docker graph.
-- `docker.sh`: Remove specific Docker images (e.g. found by `docker.py`), or 
-  remove exited containers, untagged images, dangling images, and list images 
-  of the local Docker graph for further inspection (used by `docker.py`).
+- `cleanup/jenkins.py`: Clean up old Jenkins multibranch pipeline jobs.
+- `cleanup/sonar.py`: Clean up old analysis projects from Sonar.
+- `cleanup/docker.py`: Find old tagged images to remove from the Docker graph.
+- `cleanup/docker.sh`: Remove specific Docker images based on a file with 
+  a newline-separated list of IDs or tags (e.g. found by `cleanup/docker.py`), 
+  or remove exited containers, remove untagged images, remove dangling images 
+  and write a list of images from the local Docker graph for further inspection 
+  (used by `cleanup/docker.py`).
 
 Some of the scripts have interactions with each other. This repository contains 
 a `Jenkinsfile` with appropriate steps for a Jenkins CI deployment to regularly 

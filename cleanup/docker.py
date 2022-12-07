@@ -17,15 +17,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import argparse
+from argparse import ArgumentParser, FileType, Namespace
+from datetime import datetime, timedelta
 import os
 import sys
-from datetime import datetime, timedelta
+from typing import Dict, Set, TextIO
 from gatherer.config import Configuration
-from gatherer.domain.source import Source
+from gatherer.domain.source.gitlab import GitLab
 from gitlab.exceptions import GitlabGetError, GitlabListError
 
-def parse_args():
+def parse_args() -> Namespace:
     """
     Parse command line arguments.
     """
@@ -33,7 +34,7 @@ def parse_args():
     config = Configuration.get_settings()
 
     description = "Remove old tagged images from the Docker graph"
-    parser = argparse.ArgumentParser(description=description)
+    parser = ArgumentParser(description=description)
     parser.add_argument('--registry', default=os.getenv('DOCKER_REGISTRY'),
                         help='Registry URL')
     parser.add_argument('--group', default=None,
@@ -42,9 +43,9 @@ def parse_args():
                         help="GitLab URL")
     parser.add_argument("--days", type=int, default=2,
                         help="Number of days to keep old images")
-    parser.add_argument("images", nargs='?', type=argparse.FileType('r'),
+    parser.add_argument("images", nargs='?', type=FileType('r'),
                         default=sys.stdin, help="List of candidate images")
-    parser.add_argument("tags", nargs='?', type=argparse.FileType('w'),
+    parser.add_argument("tags", nargs='?', type=FileType('w'),
                         default=sys.stdout, help="Output of tags to remove")
     return parser.parse_args()
 
@@ -53,13 +54,13 @@ class DockerTagCleanup:
     Docker tag cleanup operations.
     """
 
-    def __init__(self, registry='', group=None, days=''):
-        self.check_repos = {}
+    def __init__(self, registry: str = '', group: str = '', days: int = 2):
+        self.check_repos: Dict[str, Set[str]] = {}
         self.registry = registry
         self.group = group
         self.days = days
 
-    def _parse_line(self, line):
+    def _parse_line(self, line: str) -> None:
         parts = line.strip().split(' ')
         if len(parts) != 3:
             raise RuntimeError('Too few parts')
@@ -82,7 +83,7 @@ class DockerTagCleanup:
 
         self.check_repos.setdefault(repo, set()).add(tag)
 
-    def parse_image_projects(self, images_file):
+    def parse_image_projects(self, images_file: TextIO) -> None:
         """
         Retrieve candidate images for removal and group them by repository
         name and branch sets.
@@ -95,13 +96,13 @@ class DockerTagCleanup:
             except RuntimeError as error:
                 print(f'{error} on line {line.strip()}')
 
-    def get_gitlab_projects(self, source):
+    def get_gitlab_projects(self, source: GitLab) -> Set[str]:
         """
         Verify the repositories and branch sets for existence and return a set
         of tagged images that can be removed.
         """
 
-        remove = set()
+        remove: Set[str] = set()
         gitlab_api = source.gitlab_api
 
         prefix = f'{self.registry}/{self.group}-'
@@ -121,17 +122,17 @@ class DockerTagCleanup:
 
         return remove
 
-def main():
+def main() -> None:
     """
     Main entry point.
     """
 
     args = parse_args()
 
-    source = Source.from_type('gitlab', url=args.gitlab, name='GitLab')
+    source = GitLab('gitlab', url=args.gitlab, name='GitLab')
     group = source.gitlab_group
     if group is None:
-        group = args.group
+        group = str(args.group)
 
     cleanup = DockerTagCleanup(args.registry, group, args.days)
     cleanup.parse_image_projects(args.images)

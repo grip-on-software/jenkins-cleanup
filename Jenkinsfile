@@ -51,9 +51,21 @@ pipeline {
                 sh 'docker push $DOCKER_REGISTRY/gros-jenkins-cleanup:latest'
             }
         }
+        stage('SonarQube Analysis') {
+            steps {
+                withPythonEnv('System-CPython-3') {
+                    pysh 'python -m pip install -r analysis-requirements.txt'
+                    pysh 'mypy cleanup --html-report mypy-report --cobertura-xml-report mypy-report --junit-xml mypy-report/junit.xml --no-incremental --show-traceback || true'
+                    pysh 'python -m pylint cleanup --exit-zero --reports=n --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" -d duplicate-code > pylint-report.txt'
+                }
+                withSonarQubeEnv('SonarQube') {
+                    sh '${SCANNER_HOME}/bin/sonar-scanner -Dsonar.projectKey=jenkins-cleanup:$BRANCH_NAME -Dsonar.projectName="Jenkins cleanup $BRANCH_NAME"'
+                }
+            }
+        }
         stage('Cleanup docker') {
             steps {
-                sh './docker.sh'
+                sh './cleanup/docker.sh'
             }
         }
         stage('Cleanup jenkins') {
@@ -66,15 +78,15 @@ pipeline {
             }
             steps {
                 withCredentials([file(credentialsId: 'data-gathering-settings', variable: 'GATHERER_SETTINGS_FILE'), file(credentialsId: 'data-gathering-credentials', variable: 'GATHERER_CREDENTIALS_FILE')]) {
-                    sh 'python jenkins.py'
-                    sh 'python sonar.py'
-                    sh 'python docker.py images.txt tags.txt'
+                    sh 'python cleanup/jenkins.py'
+                    sh 'python cleanup/sonar.py'
+                    sh 'python cleanup/docker.py images.txt tags.txt'
                 }
             }
         }
         stage('Cleanup docker tags') {
             steps {
-                sh './docker.sh tags.txt'
+                sh './cleanup/docker.sh tags.txt'
             }
         }
         stage('Status') {

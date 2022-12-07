@@ -17,16 +17,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import argparse
+from argparse import ArgumentParser, Namespace
 from datetime import datetime, timedelta
 from pathlib import Path
-from requests.auth import HTTPBasicAuth
+from typing import Dict, Set
 from gatherer.config import Configuration
-from gatherer.domain.source import Source
+from gatherer.domain.source.gitlab import GitLab
 from gatherer.request import Session
 from gitlab.exceptions import GitlabGetError, GitlabListError
+from requests.auth import HTTPBasicAuth
 
-def parse_args():
+def parse_args() -> Namespace:
     """
     Parse command line arguments.
     """
@@ -39,7 +40,7 @@ def parse_args():
         verify = True
 
     description = "Remove old branch analysis projects from Sonar"
-    parser = argparse.ArgumentParser(description=description)
+    parser = ArgumentParser(description=description)
     parser.add_argument('--url', help='Sonar URL',
                         default=config.get('sonar', 'host'))
     parser.add_argument('--username', help='Sonar username',
@@ -58,7 +59,8 @@ def parse_args():
                         help="Number of days to keep old projects")
     return parser.parse_args()
 
-def get_sonar_projects(session, url, days=2):
+def get_sonar_projects(session: Session, url: str, days: int = 2) -> \
+        Dict[str, Set[str]]:
     """
     Retrieve candidate Sonar projects for removal and group them by repository
     name and branch sets.
@@ -74,28 +76,29 @@ def get_sonar_projects(session, url, days=2):
     except ValueError as error:
         raise ValueError(f'Invalid JSON response: {request.text}') from error
 
-    check_repos = {}
+    check_repos: Dict[str, Set[str]] = {}
     for project in projects['components']:
         # Only consider projects with branches
-        key = project['key']
+        key = str(project['key'])
         if ':' in key:
             repo, branch = key.split(':')
             check_repos.setdefault(repo, set()).add(branch)
 
     return check_repos
 
-def get_gitlab_projects(check_repos, args):
+def get_gitlab_projects(check_repos: Dict[str, Set[str]], args: Namespace) -> \
+        Set[str]:
     """
     Verify the repositories and branch sets for existence and return a set
     of Sonar projects that can be removed.
     """
 
-    remove = set()
-    source = Source.from_type('gitlab', url=args.gitlab, name='GitLab')
+    remove: Set[str] = set()
+    source = GitLab('gitlab', url=args.gitlab, name='GitLab')
     gitlab_api = source.gitlab_api
     group = source.gitlab_group
     if group is None:
-        group = args.group
+        group = str(args.group)
 
     for repo, branches in check_repos.items():
         project_name = f'{group}/{repo}'
@@ -103,7 +106,7 @@ def get_gitlab_projects(check_repos, args):
             project = gitlab_api.projects.get(project_name)
 
             # List of existing branch names
-            names = set(branch.name for branch in project.branches.list())
+            names = set(str(branch.name) for branch in project.branches.list())
         except (GitlabGetError, GitlabListError) as error:
             print(f'{error} for GitLab project {project_name}')
             continue
@@ -113,7 +116,7 @@ def get_gitlab_projects(check_repos, args):
 
     return remove
 
-def main():
+def main() -> None:
     """
     Main entry point.
     """
@@ -122,7 +125,7 @@ def main():
 
     auth = HTTPBasicAuth(args.username, args.password)
     session = Session(verify=args.verify, auth=auth)
-    sonar_url = args.url.rstrip('/')
+    sonar_url = str(args.url).rstrip('/')
 
     check_repos = get_sonar_projects(session, sonar_url, args.days)
     remove = get_gitlab_projects(check_repos, args)

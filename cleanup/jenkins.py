@@ -17,23 +17,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import argparse
+from argparse import ArgumentParser, Namespace
 from datetime import datetime, timedelta
 from gatherer.config import Configuration
 from gatherer.jenkins import Jenkins
 
-def parse_args():
+def parse_args() -> Namespace:
     """
     Parse command line arguments.
     """
 
     description = "Remove old branch jobs"
-    parser = argparse.ArgumentParser(description=description)
+    parser = ArgumentParser(description=description)
     parser.add_argument("--days", type=int, default=2,
                         help="Number of days to keep old jobs")
     return parser.parse_args()
 
-def main():
+def main() -> None:
     """
     Main entry point.
     """
