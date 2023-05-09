@@ -1,4 +1,4 @@
-FROM python:3.7-alpine3.13
+FROM python:3.7-alpine3.17
 
 ARG PIP_REGISTRY
 ARG PIP_CERTIFICATE
